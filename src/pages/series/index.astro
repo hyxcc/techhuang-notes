@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatPostDate, getAllSeries, getPublishedPosts } from '../../utils/posts';
+
+const articles = await getPublishedPosts();
+const series = getAllSeries(articles);
+---
+<BaseLayout title="专题系列">
+  <section class="page-intro shell">
+    <p class="eyebrow">Writing series</p>
+    <h1>专题系列</h1>
+    <p>按连续主题组织文章，把单篇记录串成可以循序阅读的实践路径。</p>
+  </section>
+  <section class="section shell">
+    <div class="series-grid">
+      {series.map((item) => (
+        <a href={`/series/${encodeURIComponent(item.name)}/`}>
+          <div class="meta"><span>{item.count} 篇文章</span><span>更新于 {formatPostDate(item.latestDate)}</span></div>
+          <h2>{item.name}</h2>
+          <p>{item.posts.map((post) => post.data.title).join(' · ')}</p>
+          <span class="text-link">查看系列 →</span>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>

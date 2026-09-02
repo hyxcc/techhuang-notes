@@ -1,0 +1,97 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatPostDate } from '../../utils/posts';
+import { formatReadingNoteTime, getNotesForBook, getPublishedReading, getPublishedReadingNotes, readingStatusLabels } from '../../utils/reading';
+import { render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const items = await getPublishedReading();
+  const notes = await getPublishedReadingNotes();
+  return items.map((item) => ({
+    params: { slug: item.id },
+    props: { item, notes: getNotesForBook(notes, item.id) },
+  }));
+}
+
+const { item, notes } = Astro.props;
+const { Content } = await render(item);
+const renderedNotes = await Promise.all(notes.map(async (note) => {
+  const { Content: NoteContent } = await render(note);
+  return { note, NoteContent };
+}));
+const date = item.data.status === 'finished' ? item.data.finishedDate : item.data.startedDate;
+---
+<BaseLayout title={item.data.title} description={item.data.description}>
+  <article class="reading-page">
+    <header class="reading-header">
+      <div class="meta">
+        <span class="reading-category">{item.data.category}</span>
+        <span>{readingStatusLabels[item.data.status]}</span>
+        {date && <span>{formatPostDate(date)}</span>}
+      </div>
+      <h1>{item.data.title}</h1>
+      <p class="reading-author">{item.data.author}</p>
+      <p class="article-lead">{item.data.description}</p>
+      <div class="tag-list">
+        {item.data.tags.map((tag) => <span class="tag"># {tag}</span>)}
+      </div>
+      {item.data.status === 'reading' && (
+        <div class="reading-progress reading-detail-progress">
+          <div class="reading-progress-label"><span>阅读进度</span><span>{item.data.progress}%</span></div>
+          <div class="reading-progress-track"><span style={`width: ${item.data.progress}%`}></span></div>
+        </div>
+      )}
+      {item.data.externalUrl && <a class="text-link reading-external-link" href={item.data.externalUrl} target="_blank" rel="noreferrer">查看书籍信息 ↗</a>}
+    </header>
+    <div class="article-body reading-body">
+      <Content />
+    </div>
+    <section class="reading-notes-section" aria-labelledby="reading-notes-heading">
+      <div class="reading-notes-heading">
+        <div>
+          <p class="eyebrow">Reading notes</p>
+          <h2 id="reading-notes-heading">读书笔记</h2>
+        </div>
+        <span class="meta">{notes.length} 篇</span>
+      </div>
+      {renderedNotes.length > 0 ? (
+        <ol class="reading-note-list">
+          {renderedNotes.map(({ note, NoteContent }) => (
+            <li>
+              <article class="reading-note">
+                <header>
+                  <time datetime={note.data.recordedAt.toISOString()}>{formatReadingNoteTime(note.data.recordedAt)}</time>
+                  <h3>{note.data.title}</h3>
+                  <div class="reading-note-source">
+                    <span>{note.data.chapter}</span>
+                    <span>第 {note.data.pages} 页</span>
+                  </div>
+                </header>
+                {note.data.relatedContent && (
+                  <blockquote>
+                    <p>{note.data.relatedContent}</p>
+                    <cite>— {note.data.chapter}，第 {note.data.pages} 页</cite>
+                  </blockquote>
+                )}
+                <div class="article-body reading-note-body">
+                  <NoteContent />
+                </div>
+                {note.data.tags.length > 0 && (
+                  <div class="tag-list">
+                    {note.data.tags.map((tag) => <span class="tag"># {tag}</span>)}
+                  </div>
+                )}
+              </article>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div class="reading-notes-empty">
+          <strong>这本书还没有单独的笔记</strong>
+          <p>读到值得停下来的地方时，记录章节、页码、关联内容和当时的总结。</p>
+        </div>
+      )}
+    </section>
+    <a class="back-link" href="/reading/">← 返回阅读列表</a>
+  </article>
+</BaseLayout>

@@ -1,0 +1,96 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../data/site';
+import { formatPostDate, getPublishedPosts } from '../utils/posts';
+import { getPublishedProjects } from '../utils/projects';
+import { getPublishedReading, getReadingByStatus } from '../utils/reading';
+
+const articles = await getPublishedPosts();
+const featured = articles.find((article) => article.data.featured) ?? articles[0];
+const latest = articles.filter((article) => article.id !== featured?.id).slice(0, 2);
+const projects = await getPublishedProjects();
+const featuredProject = projects.find((project) => project.data.featured) ?? projects[0];
+const readingItems = await getPublishedReading();
+const currentReadingCount = getReadingByStatus(readingItems, 'reading').length;
+const interestedReadingCount = getReadingByStatus(readingItems, 'interested').length;
+---
+<BaseLayout>
+  <section class="hero">
+    <div class="shell hero-grid">
+      <div>
+        <p class="eyebrow">Personal notes · 2026</p>
+        <h1>虽不能至，心向往之</h1>
+        <p class="hero-copy">{site.description}。这里是 HYX 的个人空间，记录后端工程、AI 实践，以及那些让生活变得具体的骑行、旅行和阅读。</p>
+      </div>
+      <p class="hero-note">星光不问赶路人，时光不负有心人。<br />生逢盛世当不负盛世，生逢其时当奋斗其时。</p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="shell">
+      <div class="section-heading">
+        <h2>最近在写</h2>
+        <a class="text-link" href="/articles/">查看全部文章 →</a>
+      </div>
+      <div class="article-grid">
+        {featured && <a class="article-card" href={`/articles/${featured.id}/`}>
+          <div class="meta"><span class="category">{featured.data.category}</span><span>{formatPostDate(featured.data.date)}</span></div>
+          <h3>{featured.data.title}</h3>
+          <p>{featured.data.description}</p>
+          <div class="card-footer"><span class="meta">{featured.data.readingTime}</span><span class="arrow">↗</span></div>
+        </a>}
+        {latest.map((article) => <a class="article-card" href={`/articles/${article.id}/`}>
+          <div class="meta"><span class="category">{article.data.category}</span><span>{formatPostDate(article.data.date)}</span></div>
+          <h3>{article.data.title}</h3>
+          <p>{article.data.description}</p>
+          <div class="card-footer"><span class="meta">{article.data.readingTime}</span><span class="arrow">↗</span></div>
+        </a>)}
+      </div>
+    </div>
+  </section>
+  {featuredProject && (
+    <section class="section project-band">
+      <div class="shell project-feature">
+        <div>
+          <p class="eyebrow">正在构建</p>
+          <h2>{featuredProject.data.title}</h2>
+          <p>{featuredProject.data.description}</p>
+          <div class="tag-list">
+            {featuredProject.data.tech.map((item) => <span class="tag">{item}</span>)}
+          </div>
+        </div>
+        <div class="project-feature-action">
+          <span class="project-status">{featuredProject.data.status}</span>
+          <a class="text-link" href={`/projects/${featuredProject.id}/`}>查看项目案例 →</a>
+        </div>
+      </div>
+    </section>
+  )}
+  <section class="section reading-band">
+    <div class="shell reading-feature">
+      <div>
+        <p class="eyebrow">阅读</p>
+        <h2>最近在读什么，正在对什么产生兴趣。</h2>
+        <p>不把阅读变成打卡，记录它如何进入工作、生活和下一次思考。</p>
+      </div>
+      <div class="reading-feature-side">
+        <div class="reading-counts"><span><strong>{currentReadingCount}</strong> 最近在读</span><span><strong>{interestedReadingCount}</strong> 感兴趣</span></div>
+        <a class="text-link" href="/reading/">查看阅读记录 →</a>
+      </div>
+    </div>
+  </section>
+  <section class="section split-band">
+    <div class="shell split">
+      <div>
+        <p class="eyebrow">关于这里</p>
+        <h2>技术是工作，生活是答案的一部分。</h2>
+      </div>
+      <div>
+        <p>我是一名软件开发程序员，主要使用 Java，也在持续探索 AI 能为日常工程带来什么。这个空间用来放下完整的思考，也放下工作之外的风景。</p>
+        <div class="inline-links">
+          <a class="text-link" href="/about/">认识 HYX →</a>
+          <a class="text-link" href="/now/">最近在做什么 →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

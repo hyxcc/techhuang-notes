@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { render } from 'astro:content';
+import { formatPostDate } from '../../utils/posts';
+import { getPublishedProjects } from '../../utils/projects';
+
+export async function getStaticPaths() {
+  const projects = await getPublishedProjects();
+  return projects.map((project) => ({ params: { slug: project.id }, props: { project } }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+---
+<BaseLayout title={project.data.title} description={project.data.description}>
+  <article class="project-page">
+    <header class="project-header">
+      <div class="meta">
+        <span class="project-status">{project.data.status}</span>
+        <span>{formatPostDate(project.data.date)}</span>
+      </div>
+      <h1>{project.data.title}</h1>
+      <p>{project.data.description}</p>
+      <div class="tag-list">
+        {project.data.tech.map((item) => <span class="tag">{item}</span>)}
+      </div>
+    </header>
+    <div class="article-body project-body">
+      <Content />
+    </div>
+    <a class="back-link" href="/projects/">← 返回项目列表</a>
+  </article>
+</BaseLayout>

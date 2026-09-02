@@ -1,0 +1,17 @@
+{
+  "name": "hyx-tech-blog",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "scripts": {
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro build && mkdir -p dist/server && cp src/sites-worker.js dist/server/index.js",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.16.0"
+  }
+}

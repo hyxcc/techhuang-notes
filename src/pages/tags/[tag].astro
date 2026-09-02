@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatPostDate, getAllTags, getPostsByTag, getPublishedPosts } from '../../utils/posts';
+
+export async function getStaticPaths() {
+  const articles = await getPublishedPosts();
+  return getAllTags(articles).map(({ name }) => ({
+    params: { tag: name },
+    props: { tag: name, articles: getPostsByTag(articles, name) },
+  }));
+}
+
+const { tag, articles } = Astro.props;
+---
+<BaseLayout title={`标签：${tag}`} description={`浏览所有带有“${tag}”标签的文章。`}>
+  <section class="page-intro shell">
+    <p class="eyebrow">Tagged writing</p>
+    <h1>#{tag}</h1>
+    <p>共 {articles.length} 篇文章。</p>
+  </section>
+  <section class="section shell">
+    <div class="article-list">
+      {articles.map((article) => (
+        <a class="article-row" href={`/articles/${article.id}/`}>
+          <div class="meta"><span>{formatPostDate(article.data.date)}</span><span class="category">{article.data.category}</span></div>
+          <div><h2>{article.data.title}</h2><p>{article.data.description}</p></div>
+          <span class="meta reading-time">{article.data.readingTime}</span>
+        </a>
+      ))}
+    </div>
+    <a class="back-link" href="/tags/">← 查看全部标签</a>
+  </section>
+</BaseLayout>

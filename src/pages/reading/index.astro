@@ -1,0 +1,131 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatPostDate } from '../../utils/posts';
+import { formatReadingNoteTime, getNotesForBook, getPublishedReading, getPublishedReadingNotes, getReadingByStatus, getReadingTimeline, getReadingTimelineLabel, readingStatusLabels } from '../../utils/reading';
+
+const items = await getPublishedReading();
+const notes = await getPublishedReadingNotes();
+const timeline = getReadingTimeline(items);
+const sections = [
+  {
+    status: 'reading' as const,
+    eyebrow: 'Currently reading',
+    description: '正在投入时间，允许慢一点，也允许中途改变阅读方向。',
+  },
+  {
+    status: 'interested' as const,
+    eyebrow: 'On my radar',
+    description: '还没有开始，但已经对它提出了问题，或想知道它会带来什么答案。',
+  },
+  {
+    status: 'finished' as const,
+    eyebrow: 'Finished',
+    description: '读完之后留下的判断、片段和仍然没有解决的问题。',
+  },
+];
+---
+<BaseLayout title="阅读">
+  <section class="page-intro shell">
+    <p class="eyebrow">Reading notes</p>
+    <h1>阅读</h1>
+    <p>记录最近在读什么，也记录哪些书正在我心里排队。阅读不是打卡，是给思考找一个更长的时间尺度。</p>
+  </section>
+  <section class="section shell reading-sections">
+    {sections.map((section) => {
+      const sectionItems = getReadingByStatus(items, section.status);
+      return (
+        <section class="reading-section" aria-labelledby={`reading-${section.status}`}>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">{section.eyebrow}</p>
+              <h2 id={`reading-${section.status}`}>{readingStatusLabels[section.status]}</h2>
+            </div>
+            <span class="meta">{sectionItems.length} 本</span>
+          </div>
+          <p class="reading-section-description">{section.description}</p>
+          {sectionItems.length > 0 ? (
+            <div class="reading-grid">
+              {sectionItems.map((item) => (
+                <a class="reading-card" href={`/reading/${item.id}/`}>
+                  {(() => {
+                    const bookNotes = getNotesForBook(notes, item.id);
+                    const latestNote = bookNotes[0];
+                    return bookNotes.length > 0 && (
+                      <div class="reading-note-summary">
+                        <span>{bookNotes.length} 篇笔记</span>
+                        <time datetime={latestNote.data.recordedAt.toISOString()}>
+                          最近记录于 {formatReadingNoteTime(latestNote.data.recordedAt)}
+                        </time>
+                      </div>
+                    );
+                  })()}
+                  <div class="reading-card-top">
+                    <span class="reading-category">{item.data.category}</span>
+                    <span class="meta">{item.data.author}</span>
+                  </div>
+                  <h3>{item.data.title}</h3>
+                  <p>{item.data.description}</p>
+                  {item.data.status === 'reading' && (
+                    <div class="reading-progress">
+                      <div class="reading-progress-label"><span>阅读进度</span><span>{item.data.progress}%</span></div>
+                      <div class="reading-progress-track"><span style={`width: ${item.data.progress}%`}></span></div>
+                    </div>
+                  )}
+                  <div class="tag-list">
+                    {item.data.tags.map((tag) => <span class="tag">{tag}</span>)}
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div class="reading-empty">
+              <strong>还没有记录</strong>
+              <span>在 <code>src/content/reading/</code> 新建 Markdown 文件即可添加。</span>
+            </div>
+          )}
+        </section>
+      );
+    })}
+  </section>
+  <section class="section shell reading-timeline-section" aria-labelledby="reading-timeline-heading">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Reading timeline</p>
+        <h2 id="reading-timeline-heading">阅读时间线</h2>
+      </div>
+      <span class="meta">{timeline.length} 个节点</span>
+    </div>
+    <p class="reading-section-description">从产生兴趣到开始阅读，再到读完之后留下笔记。时间线会根据阅读记录自动生成。</p>
+    {timeline.length > 0 ? (
+      <ol class="reading-timeline">
+        {timeline.map((event) => (
+          <li>
+            <time datetime={formatPostDate(event.date)}>{formatPostDate(event.date)}</time>
+            <span class:list={['timeline-marker', `is-${event.type}`]} aria-hidden="true"></span>
+            <div class="timeline-content">
+              <span class="reading-category">{getReadingTimelineLabel(event)}</span>
+              <a href={`/reading/${event.item.id}/`}>《{event.item.data.title}》</a>
+              <p>{event.item.data.author} · {event.item.data.category}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <div class="reading-empty">
+        <strong>时间线还没有节点</strong>
+        <span>添加感兴趣、开始阅读或已读记录后，这里会自动出现对应事件。</span>
+      </div>
+    )}
+  </section>
+  <section class="section split-band">
+    <div class="shell split">
+      <div>
+        <p class="eyebrow">阅读方式</p>
+        <h2>不急着把每本书都读完。</h2>
+      </div>
+      <div>
+        <p>有些书适合完整读完，有些书只需要在某个阶段陪我走一段。重要的是读完之后，是否留下了新的问题，以及它有没有进入真实生活。</p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

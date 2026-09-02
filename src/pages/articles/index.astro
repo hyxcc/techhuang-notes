@@ -1,0 +1,110 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { categories } from '../../data/site';
+import { formatPostDate, getPublishedPosts } from '../../utils/posts';
+
+const articles = await getPublishedPosts();
+---
+<BaseLayout title="文章">
+  <section class="page-intro shell">
+    <p class="eyebrow">Writing archive</p>
+    <h1>文章</h1>
+    <p>关于 Java 后端、AI 工作流，以及工作之外的骑行、旅行和阅读。</p>
+  </section>
+  <section class="section shell">
+    <div class="archive-links">
+      <a href="/series/">专题系列</a>
+      <a href="/tags/">全部标签</a>
+    </div>
+    <div class="search-field">
+      <label class="sr-only" for="article-search">搜索文章</label>
+      <input id="article-search" type="search" placeholder="搜索标题、摘要、分类或标签" autocomplete="off" />
+    </div>
+    <div class="filter-row" aria-label="文章分类">
+      {categories.map((category, index) => <a class:list={['filter', { active: index === 0 }]} data-category={category} href={index === 0 ? '/articles/' : `/articles/?category=${encodeURIComponent(category)}`}>{category}</a>)}
+    </div>
+    <p class="filter-summary" id="filter-summary" aria-live="polite"></p>
+    <div class="article-list" id="article-list">
+      {articles.map((article) => <a class="article-row" data-category={article.data.category} data-search={`${article.data.title} ${article.data.description} ${article.data.category} ${article.data.tags.join(' ')}`} href={`/articles/${article.id}/`}>
+        <div class="meta"><span>{formatPostDate(article.data.date)}</span><span class="category">{article.data.category}</span></div>
+        <div><h2>{article.data.title}</h2><p>{article.data.description}</p></div>
+        <span class="meta reading-time">{article.data.readingTime}</span>
+      </a>)}
+    </div>
+    <div class="empty-state" id="empty-state" hidden>
+      <h2 id="empty-heading">没有找到文章</h2>
+      <p id="empty-copy">换一个关键词或分类试试。</p>
+    </div>
+  </section>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const requestedCategory = params.get('category');
+    const filters = [...document.querySelectorAll<HTMLAnchorElement>('.filter')];
+    const rows = [...document.querySelectorAll<HTMLElement>('.article-row')];
+    const knownCategories = filters.map((filter) => filter.dataset.category);
+    const activeCategory = requestedCategory && knownCategories.includes(requestedCategory)
+      ? requestedCategory
+      : '全部';
+    const initialQuery = params.get('q') ?? '';
+
+    filters.forEach((filter) => {
+      const isActive = filter.dataset.category === activeCategory;
+      filter.classList.toggle('active', isActive);
+      if (isActive) filter.setAttribute('aria-current', 'page');
+      else filter.removeAttribute('aria-current');
+    });
+
+    const searchInput = document.querySelector<HTMLInputElement>('#article-search');
+    const summary = document.querySelector('#filter-summary');
+    const emptyState = document.querySelector<HTMLElement>('#empty-state');
+    const emptyHeading = document.querySelector('#empty-heading');
+    const emptyCopy = document.querySelector('#empty-copy');
+    if (searchInput) searchInput.value = initialQuery;
+
+    function normalize(value: string) {
+      return value.normalize('NFKC').toLocaleLowerCase('zh-CN').trim();
+    }
+
+    function updateArticles() {
+      const query = normalize(searchInput?.value ?? '');
+      let visibleCount = 0;
+
+      rows.forEach((row) => {
+        const matchesCategory = activeCategory === '全部' || row.dataset.category === activeCategory;
+        const matchesQuery = !query || normalize(row.dataset.search ?? '').includes(query);
+        const isVisible = matchesCategory && matchesQuery;
+        row.hidden = !isVisible;
+        if (isVisible) visibleCount += 1;
+      });
+
+      if (summary) {
+        const categoryLabel = activeCategory === '全部' ? '全部文章' : activeCategory;
+        summary.textContent = query
+          ? `${categoryLabel} · “${searchInput?.value.trim()}” · ${visibleCount} 篇`
+          : `${categoryLabel} · ${visibleCount} 篇文章`;
+      }
+      if (emptyHeading) emptyHeading.textContent = query ? '没有匹配的文章' : '这个分类还没有文章';
+      if (emptyCopy) emptyCopy.textContent = query ? '换一个关键词或缩短搜索内容试试。' : '内容正在整理中，可以先看看其他分类。';
+      if (emptyState) emptyState.hidden = visibleCount !== 0;
+
+      const nextParams = new URLSearchParams(window.location.search);
+      if (searchInput?.value.trim()) nextParams.set('q', searchInput.value.trim());
+      else nextParams.delete('q');
+      const nextUrl = `${window.location.pathname}${nextParams.size > 0 ? `?${nextParams}` : ''}`;
+      window.history.replaceState(null, '', nextUrl);
+    }
+
+    searchInput?.addEventListener('input', updateArticles);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === '/' && document.activeElement !== searchInput) {
+        event.preventDefault();
+        searchInput?.focus();
+      }
+      if (event.key === 'Escape' && document.activeElement === searchInput && searchInput?.value) {
+        searchInput.value = '';
+        updateArticles();
+      }
+    });
+    updateArticles();
+  </script>
+</BaseLayout>

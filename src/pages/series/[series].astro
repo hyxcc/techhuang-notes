@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatPostDate, getAllSeries, getPublishedPosts } from '../../utils/posts';
+
+export async function getStaticPaths() {
+  const articles = await getPublishedPosts();
+  return getAllSeries(articles).map((item) => ({
+    params: { series: item.name },
+    props: { series: item.name, articles: item.posts },
+  }));
+}
+
+const { series, articles } = Astro.props;
+---
+<BaseLayout title={`系列：${series}`} description={`按顺序阅读“${series}”系列文章。`}>
+  <section class="page-intro shell">
+    <p class="eyebrow">Writing series</p>
+    <h1>{series}</h1>
+    <p>共 {articles.length} 篇文章，建议按照下方顺序阅读。</p>
+  </section>
+  <section class="section shell">
+    <ol class="series-list">
+      {articles.map((article, index) => (
+        <li>
+          <a href={`/articles/${article.id}/`}>
+            <span class="series-number">{String(index + 1).padStart(2, '0')}</span>
+            <div>
+              <div class="meta"><span>{formatPostDate(article.data.date)}</span><span class="category">{article.data.category}</span><span>{article.data.readingTime}</span></div>
+              <h2>{article.data.title}</h2>
+              <p>{article.data.description}</p>
+            </div>
+            <span class="arrow">↗</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+    <a class="back-link" href="/series/">← 查看全部系列</a>
+  </section>
+</BaseLayout>

@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../data/site';
+---
+<BaseLayout title="关于我">
+  <section class="page-intro shell">
+    <p class="eyebrow">A little about me</p>
+    <h1>关于我</h1>
+  </section>
+  <section class="section shell about-layout">
+    <div class="avatar" aria-label="HYX 的头像占位">H</div>
+    <div>
+      <h2>你好，我是 HYX。</h2>
+      <p>我是一名后端开发程序员，主要关注 Java 服务端开发、系统稳定性和工程效率。最近也在认真了解 AI，把它放进真实的工作流，而不只是停留在概念里。</p>
+      <p>工作之外，我喜欢骑行、旅行和阅读。它们让我保持一点好奇心，也提醒我不要把生活压缩成一张任务清单。</p>
+      <p>这里是我的长期笔记：记录编码生活、技术分享、面试记录，以及兴趣爱好。</p>
+      <div class="tag-list">
+        <span class="tag">Java</span><span class="tag">AI</span><span class="tag">骑行</span><span class="tag">阅读</span>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

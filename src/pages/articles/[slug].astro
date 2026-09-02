@@ -1,0 +1,199 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { render } from 'astro:content';
+import { formatPostDate, getAdjacentPosts, getPostsBySeries, getPublishedPosts, getRelatedPosts } from '../../utils/posts';
+
+export async function getStaticPaths() {
+  const articles = await getPublishedPosts();
+  return articles.map((article) => ({ params: { slug: article.id }, props: { article } }));
+}
+
+const { article } = Astro.props;
+const { Content, headings } = await render(article);
+const articles = await getPublishedPosts();
+const { newer, older } = getAdjacentPosts(articles, article.id);
+const related = getRelatedPosts(articles, article);
+const tableOfContents = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+const seriesPosts = article.data.series ? getPostsBySeries(articles, article.data.series) : [];
+const seriesPosition = seriesPosts.findIndex((post) => post.id === article.id) + 1;
+const articleUrl = new URL(`/articles/${article.id}/`, Astro.site);
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: article.data.title,
+  description: article.data.description,
+  datePublished: article.data.date.toISOString(),
+  dateModified: (article.data.updatedDate ?? article.data.date).toISOString(),
+  author: {
+    '@type': 'Person',
+    name: 'HYX',
+  },
+  mainEntityOfPage: articleUrl.toString(),
+};
+---
+<BaseLayout title={article.data.title} description={article.data.description} type="article" publishedTime={article.data.date}>
+  <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+  <div class="article-reading-progress" id="reading-progress" aria-hidden="true"></div>
+  <article class="article-document">
+    <header class="article-header">
+      <div class="meta">
+        <span class="category">{article.data.category}</span>
+        <span>发布于 {formatPostDate(article.data.date)}</span>
+        {article.data.updatedDate && <span>修订于 {formatPostDate(article.data.updatedDate)}</span>}
+        <span>{article.data.readingTime}</span>
+      </div>
+      <h1>{article.data.title}</h1>
+      <p class="article-lead">{article.data.description}</p>
+      <div class="tag-list">
+        {article.data.tags.map((tag) => <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}># {tag}</a>)}
+      </div>
+      <div class="article-actions">
+        <button class="secondary-button" id="share-article" type="button">分享文章</button>
+        <span class="action-status" id="action-status" aria-live="polite"></span>
+      </div>
+      {article.data.series && (
+        <a class="series-context" href={`/series/${encodeURIComponent(article.data.series)}/`}>
+          <span class="eyebrow">专题系列</span>
+          <strong>{article.data.series}</strong>
+          <span>第 {seriesPosition} 篇，共 {seriesPosts.length} 篇</span>
+        </a>
+      )}
+    </header>
+    <div class:list={['article-content-layout', { 'without-toc': tableOfContents.length === 0 }]}>
+      {tableOfContents.length > 0 && (
+        <aside class="article-toc">
+          <p>文章目录</p>
+          <nav aria-label="文章目录">
+            {tableOfContents.map((heading) => (
+              <a class:list={{ nested: heading.depth === 3 }} href={`#${heading.slug}`}>{heading.text}</a>
+            ))}
+          </nav>
+        </aside>
+      )}
+      <div class="article-main">
+        <div class="article-body">
+          <Content />
+        </div>
+        <footer class="article-footer">
+          {related.length > 0 && (
+            <section class="related-section" aria-labelledby="related-heading">
+              <h2 id="related-heading">继续阅读</h2>
+              <div class="related-list">
+                {related.map((post) => (
+                  <a href={`/articles/${post.id}/`}>
+                    <span class="meta">{post.data.category} · {formatPostDate(post.data.date)}</span>
+                    <strong>{post.data.title}</strong>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+          <nav class="article-pagination" aria-label="文章翻页">
+            {older ? (
+              <a href={`/articles/${older.id}/`}>
+                <span>上一篇</span>
+                <strong>{older.data.title}</strong>
+              </a>
+            ) : <span></span>}
+            {newer && (
+              <a class="next" href={`/articles/${newer.id}/`}>
+                <span>下一篇</span>
+                <strong>{newer.data.title}</strong>
+              </a>
+            )}
+          </nav>
+        </footer>
+      </div>
+    </div>
+  </article>
+  <script>
+    const progress = document.querySelector<HTMLElement>('#reading-progress');
+    const articleBody = document.querySelector<HTMLElement>('.article-body');
+    const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>('.article-toc a')];
+    const shareButton = document.querySelector<HTMLButtonElement>('#share-article');
+    const actionStatus = document.querySelector<HTMLElement>('#action-status');
+
+    function updateReadingProgress() {
+      if (!progress || !articleBody) return;
+      const start = articleBody.getBoundingClientRect().top + window.scrollY;
+      const distance = Math.max(articleBody.offsetHeight - window.innerHeight, 1);
+      const value = Math.min(Math.max((window.scrollY - start) / distance, 0), 1);
+      progress.style.transform = `scaleX(${value})`;
+    }
+
+    window.addEventListener('scroll', updateReadingProgress, { passive: true });
+    window.addEventListener('resize', updateReadingProgress);
+    updateReadingProgress();
+
+    if ('IntersectionObserver' in window && tocLinks.length > 0) {
+      const linksById = new Map(
+        tocLinks.map((link) => [decodeURIComponent(link.hash.slice(1)), link]),
+      );
+      const headings = [...document.querySelectorAll<HTMLElement>('.article-body h2, .article-body h3')]
+        .filter((heading) => linksById.has(heading.id));
+      const observer = new IntersectionObserver((entries) => {
+        const visibleHeading = entries.find((entry) => entry.isIntersecting)?.target as HTMLElement | undefined;
+        if (!visibleHeading) return;
+        tocLinks.forEach((link) => link.removeAttribute('aria-current'));
+        linksById.get(visibleHeading.id)?.setAttribute('aria-current', 'location');
+      }, { rootMargin: '-20% 0px -65% 0px' });
+      headings.forEach((heading) => observer.observe(heading));
+    }
+
+    async function copyText(value: string) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return;
+      }
+      const input = document.createElement('textarea');
+      input.value = value;
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      input.remove();
+    }
+
+    shareButton?.addEventListener('click', async () => {
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: document.title,
+            text: document.querySelector<HTMLMetaElement>('meta[name="description"]')?.content,
+            url: window.location.href,
+          });
+          if (actionStatus) actionStatus.textContent = '分享面板已打开';
+        } else {
+          await copyText(window.location.href);
+          if (actionStatus) actionStatus.textContent = '链接已复制';
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        if (actionStatus) actionStatus.textContent = '暂时无法分享';
+      }
+    });
+
+    document.querySelectorAll<HTMLElement>('.article-body pre').forEach((block) => {
+      const code = block.querySelector<HTMLElement>('code');
+      if (!code) return;
+      const button = document.createElement('button');
+      button.className = 'code-copy';
+      button.type = 'button';
+      button.textContent = '复制';
+      button.setAttribute('aria-label', '复制代码');
+      button.addEventListener('click', async () => {
+        try {
+          await copyText(code.innerText);
+          button.textContent = '已复制';
+          window.setTimeout(() => {
+            button.textContent = '复制';
+          }, 1600);
+        } catch {
+          button.textContent = '复制失败';
+        }
+      });
+      block.appendChild(button);
+    });
+  </script>
+</BaseLayout>

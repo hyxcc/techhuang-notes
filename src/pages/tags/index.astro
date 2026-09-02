@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAllTags, getPublishedPosts } from '../../utils/posts';
+
+const articles = await getPublishedPosts();
+const tags = getAllTags(articles);
+---
+<BaseLayout title="标签">
+  <section class="page-intro shell">
+    <p class="eyebrow">Topic index</p>
+    <h1>标签</h1>
+    <p>按具体主题浏览文章，从技术实践到工作流与生活记录。</p>
+  </section>
+  <section class="section shell">
+    <div class="tag-cloud">
+      {tags.map((tag) => (
+        <a href={`/tags/${encodeURIComponent(tag.name)}/`}>
+          <strong>{tag.name}</strong>
+          <span>{tag.count} 篇</span>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
